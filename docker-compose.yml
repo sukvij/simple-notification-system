@@ -1,0 +1,67 @@
+version: '3.9'
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: user-sns-app
+    depends_on:
+      mysql:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      - MYSQL_DSN=root:root@tcp(mysql:3306)/users?charset=utf8mb4&parseTime=True&loc=Local
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_REGION=us-east-1
+      - LOCALSTACK_ENDPOINT=http://localstack:4566
+      - SNS_TOPIC_ARN=arn:aws:sns:us-east-1:000000000000:user-notifications
+    networks:
+      - backend
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=users
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "--user=root", "--password=root"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - backend
+  localstack:
+    image: localstack/localstack:3.8.1
+    container_name: localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=sns,sqs
+      - AWS_DEFAULT_REGION=us-east-1
+      - HOSTNAME_EXTERNAL=localstack
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - ./init-aws.sh:/etc/localstack/init/ready.d/init-aws.sh
+    healthcheck:
+      test: ["CMD", "awslocal", "sns", "list-topics", "--endpoint-url=http://localhost:4566"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - backend
+volumes:
+  mysql_data:
+  localstack_data:
+networks:
+  backend:
+    driver: bridge
