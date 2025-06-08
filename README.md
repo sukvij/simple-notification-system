@@ -1,5 +1,7 @@
 # simple-notification-system
 
+# you can get messagr using endpoint /notifications
+
 # about 
     The SNS implementation sends a notification when a user is created, publishing a message to the user-notifications topic in LocalStack.
     
